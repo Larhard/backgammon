@@ -1,0 +1,161 @@
+# Copyright (c) 2015, Bartlomiej Puget <larhard@gmail.com>
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#   * Redistributions of source code must retain the above copyright notice,
+#     this list of conditions and the following disclaimer.
+#
+#   * Redistributions in binary form must reproduce the above copyright notice,
+#     this list of conditions and the following disclaimer in the documentation
+#     and/or other materials provided with the distribution.
+#
+#   * Neither the name of the Bartlomiej Puget nor the names of its
+#     contributors may be used to endorse or promote products derived from this
+#     software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL BARTLOMIEJ PUGET BE LIABLE FOR ANY DIRECT,
+# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+# EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+import pygame
+
+import backgammon.gui.images as images
+
+from backgammon.gui.config import BOARD_SIZE, WINDOW_TITLE, FIELD_COORD, \
+     FIELD_SHIFT, CHECKER_SIZE, ROW_SIZE, JAIL_COORD, JAIL_SHIFT, JAIL_SIZE
+from backgammon.model.game import Game
+from utils import sum_by_index, multiply_by_value
+
+import logging
+
+log = logging.getLogger('gui')
+
+
+def main(*args, **kwargs):
+    pygame.init()
+
+    screen = pygame.display.set_mode(BOARD_SIZE)
+    clock = pygame.time.Clock()
+
+    pygame.display.set_caption(WINDOW_TITLE)
+
+    board = pygame.transform.scale(images.load_image('board.png'), BOARD_SIZE)
+    checker = {
+        'w': pygame.transform.scale(images.load_image('checker_white.png'),
+                                    CHECKER_SIZE),
+        'b': pygame.transform.scale(images.load_image('checker_black.png'),
+                                    CHECKER_SIZE),
+    }
+
+    game = Game()
+    human_players = {
+        'w': game.get_player('w'),
+        'b': game.get_player('b'),
+    }
+
+    is_running = True
+
+    active_dice = 0
+    active_dice_text_pos = None
+
+    while is_running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                is_running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+
+                # human move
+                if game.active_player in human_players:
+                    if active_dice_text_pos is not None \
+                            and active_dice_text_pos.collidepoint((x, y)):
+                        active_dice = (active_dice + 1) % len(game.dice)
+
+                    for color in JAIL_COORD:
+                        left = JAIL_COORD[color][0]
+                        right = JAIL_COORD[color][0] + JAIL_SIZE[0]
+                        bottom = JAIL_COORD[color][1] + CHECKER_SIZE[1]
+                        top = JAIL_COORD[color][1] + CHECKER_SIZE[1] - \
+                            JAIL_SIZE[1]
+
+                        if left < x < right and top < y < bottom:
+                            try:
+                                human_players[game.active_player].move(
+                                    Game.jail_field(game.active_player),
+                                    game.dice[active_dice])
+                            except Game.LogicError as e:
+                                print(e)
+                            active_dice = min(active_dice, len(game.dice)-1)
+                            break
+
+                    for i, (field_x, field_y) in enumerate(FIELD_COORD):
+                        left = field_x
+                        right = field_x + ROW_SIZE[0]
+                        if FIELD_SHIFT[i][1] > 0:
+                            top = field_y
+                            bottom = top + ROW_SIZE[1]
+                        else:
+                            bottom = field_y + CHECKER_SIZE[1]
+                            top = bottom - ROW_SIZE[1]
+                        if left < x < right and top < y < bottom:
+                            try:
+                                human_players[game.active_player].move(i,
+                                    game.dice[active_dice])
+                            except Game.LogicError as e:
+                                print(e)
+                            active_dice = min(active_dice, len(game.dice)-1)
+                            break
+
+        # print board
+        screen.blit(board, (0, 0))
+
+        # print checkers
+        for i, row in enumerate(game.board):
+            for count, color in enumerate(row):
+                screen.blit(checker[color], sum_by_index(FIELD_COORD[i],
+                            multiply_by_value(FIELD_SHIFT[i], count)))
+
+        # print jails
+        for color in game.jail:
+            for count, _ in enumerate(game.jail[color]):
+                screen.blit(checker[color], sum_by_index(JAIL_COORD[color],
+                            multiply_by_value(JAIL_SHIFT[color], count)))
+
+        # print dices
+        font = pygame.font.Font(None, 36)
+        dice_text = font.render(str(game.dice), 1, (255, 255, 255))
+        dice_text_pos = dice_text.get_rect()
+        dice_text_pos.centerx = screen.get_rect().centerx
+        dice_text_pos.centery = screen.get_rect().centery
+        screen.blit(dice_text, dice_text_pos)
+
+        # print active dice
+        font = pygame.font.Font(None, 36)
+        active_dice_text = font.render('-> {} <-'.format(
+                                       game.dice[active_dice]), 1,
+                                       (255, 255, 255))
+        active_dice_text_pos = active_dice_text.get_rect()
+        active_dice_text_pos.centerx = dice_text_pos.centerx
+        active_dice_text_pos.midtop = dice_text_pos.midbottom
+        screen.blit(active_dice_text, active_dice_text_pos)
+
+        # print active player
+        font = pygame.font.Font(None, 36)
+        player_text = font.render(str(game.active_player), 1, (255, 255, 255))
+        player_text_pos = player_text.get_rect()
+        player_text_pos.topright = screen.get_rect().topright
+        screen.blit(player_text, player_text_pos)
+
+        pygame.display.flip()
+        clock.tick(60)
+
+    pygame.quit()
