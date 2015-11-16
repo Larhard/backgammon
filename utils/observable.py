@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright (c) 2015, Bartlomiej Puget <larhard@gmail.com>
 # All rights reserved.
 #
@@ -28,27 +26,33 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import threading
+import weakref
 
-import argparse
-import logging
-import sys
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', '-m', help='gui/judge', default='gui')
-    parser.add_argument('--verbose', '-v', action='store_true')
-    args = parser.parse_args()
+class Observable:
+    def __init__(self):
+        self._observable_mutex = threading.RLock()
+        self._observers = weakref.WeakSet()
 
-    if args.mode == 'gui':
-        from backgammon.gui.main import main
-    elif args.mode == 'judge':
-        from backgammon.judge.main import main
-    else:
-        print("{} is not valid mode".format(args.mode))
-        parser.print_help()
-        sys.exit(1)
+    def add_observer(self, observer):
+        with self._observable_mutex:
+            self._observers.add(observer)
 
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+    def remove_observer(self, observer):
+        with self._observable_mutex:
+            self._observers.remove(observer)
 
-    main(**vars(args))
+    def set_changed(self):
+        with self._observable_mutex:
+            self._changed = True
+
+    def clear_changed(self):
+        with self._observable_mutex:
+            self._changed = False
+
+    def notify_observers(self):
+        if self._changed:
+            self.clear_changed()
+            for observer in self._observers:
+                observer.update(self)

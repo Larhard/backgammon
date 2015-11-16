@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright (c) 2015, Bartlomiej Puget <larhard@gmail.com>
 # All rights reserved.
 #
@@ -28,27 +26,35 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-import argparse
 import logging
-import sys
+import random
+import threading
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', '-m', help='gui/judge', default='gui')
-    parser.add_argument('--verbose', '-v', action='store_true')
-    args = parser.parse_args()
+from backgammon.model.game import Game
 
-    if args.mode == 'gui':
-        from backgammon.gui.main import main
-    elif args.mode == 'judge':
-        from backgammon.judge.main import main
-    else:
-        print("{} is not valid mode".format(args.mode))
-        parser.print_help()
-        sys.exit(1)
+log = logging.getLogger('RandomBot')
 
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
 
-    main(**vars(args))
+class Bot:
+    def __init__(self, player):
+        self._player = player
+
+        self._player.add_observer(self)
+
+    def update(self, player):
+        assert player is self._player
+        threading.Thread(target=self.move).start()
+
+    def move(self):
+        if self._player.is_active():
+            while not self.try_to_move():
+                pass
+
+    def try_to_move(self):
+        try:
+            position = random.randint(-1, 24)
+            distance = random.randint(1, 6)
+            self._player.move(position, distance)
+        except Game.LogicError:
+            return False
+        return True

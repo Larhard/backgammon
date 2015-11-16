@@ -30,7 +30,7 @@ import os
 
 import pygame
 
-from backgammon.gui.config import BOARD_SIZE, RESOURCE_DIR, CHECKER_SIZE
+from backgammon.gui.config import RESOURCE_DIR
 
 
 def load_image(name):

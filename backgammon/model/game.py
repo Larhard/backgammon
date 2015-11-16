@@ -28,30 +28,52 @@
 
 import logging
 import random
+import threading
 
 from backgammon.model.config import INIT_BOARD
+from utils.observable import Observable
 
 log = logging.getLogger('model')
 
 
-class Game:
+class Game(Observable):
     class LogicError(Exception):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
 
-    class Player:
+    class Player(Observable):
         def __init__(self, game, color):
+            super().__init__()
+
             self._game = game
             self._color = color
+            self._game.add_observer(self)
+
+        def __exit__(self):
+            self._game.remove_observer(self)
 
         def move(self, position, distance):
             self._game.move(self._color, position,
                             Game.distance_modifier(self._color) * distance)
 
+        def update(self, observable):
+            assert observable is self._game
+            self.set_changed()
+            self.notify_observers()
+
+        def is_active(self):
+            return self._game.active_player == self._color
+
+        @property
+        def color(self):
+            return self._color
+
     def __init__(self):
+        super().__init__()
+
+        self._game_mutex = threading.RLock()
         self._board = INIT_BOARD.copy()
-        # self._active_player = random.sample(('w', 'b'), 1)[0]
-        self._active_player = 'w'
+        self._active_player = random.sample(('w', 'b'), 1)[0]
         self._dice = self._roll_dice()
         self._jail = {'w': [], 'b': []}
 
@@ -104,7 +126,7 @@ class Game:
         return range(0, 24)
 
     @staticmethod
-    def winner(board, jail):
+    def get_winner(board, jail):
         for color in ('w', 'b'):
             if sum(k.count(color) for k in board) + len(jail[color]) == 0:
                 return color
@@ -116,40 +138,28 @@ class Game:
 
         if position not in Game.board_range() \
                 and position != Game.jail_field(player):
-            log.info('{}: invalid position'.format(player))
             return False
 
         if distance not in Game.valid_distance(player):
-            log.info('{}: invalid distance {}'.format(player, distance))
             return False
 
         if position in Game.board_range() and player not in board[position]:
-            log.info('{}: no player in position {}'.format(player, position))
             return False
 
         if position == Game.jail_field(player) \
                 and player not in jail[player]:
-            log.info('{}: no player in jail'.format(player))
             return False
 
         if len(jail[player]) > 0 and position != Game.jail_field(player):
-            log.info('{}: player is in jail'.format(player))
             return False
 
         if Game.goes_offboard(player, new_position):
-            log.debug("{}".format(sum(field.count(player) for field
-                      in board[Game.non_home_fields(player)])))
             result = sum(field.count(player) for field
                          in board[Game.non_home_fields(player)]) == 0
-            if not result:
-                log.info('{}: can not go offboard'.format(player))
             return result
 
-        log.debug('{} {}'.format(new_position, Game.goes_offboard(player,
-                  new_position)))
         if not Game.goes_offboard(player, new_position) \
                 and board[new_position].count(Game.enemy(player)) > 1:
-            log.info('enemy door')
             return False
 
         return True
@@ -172,53 +182,67 @@ class Game:
         return False
 
     def move(self, color, position, distance):
-        new_position = position + distance
-        player = self._active_player
-        enemy = Game.enemy(player)
-        board = self._board
-        dice = self._dice
-        jail = self._jail
+        with self._game_mutex:
+            new_position = position + distance
+            player = self._active_player
+            enemy = Game.enemy(player)
+            board = self._board
+            dice = self._dice
+            jail = self._jail
 
-        if Game.winner(board, jail) is not None:
-            log.info('{}: game has ended'.format(player))
-            raise Game.LogicError('game has ended')
+            if Game.get_winner(board, jail) is not None:
+                log.debug('{}: game has ended'.format(player))
+                raise Game.LogicError('game has ended')
 
-        if color != player:
-            log.info('{}: not players turn'.format(player))
-            raise Game.LogicError('not players turn')
+            if color != player:
+                log.debug('{}: not players turn'.format(player))
+                raise Game.LogicError('not players turn')
 
-        if abs(distance) not in dice:
-            log.info('{}: distance {} not in dice'.format(player, distance))
-            raise Game.LogicError('move is invalid')
+            if abs(distance) not in dice:
+                raise Game.LogicError('move is invalid')
 
-        if not self.verify_move(board, jail, position, distance, player):
-            raise Game.LogicError('move is invalid')
+            if not self.verify_move(board, jail, position, distance, player):
+                raise Game.LogicError('move is invalid')
 
-        dice.remove(abs(distance))
-        if position == Game.jail_field(player):
-            jail[player].pop()
-        else:
-            board[position].pop()
+            dice.remove(abs(distance))
+            if position == Game.jail_field(player):
+                jail[player].pop()
+            else:
+                board[position].pop()
 
-        if not Game.goes_offboard(player, new_position):
-            if Game.enemy(player) in board[new_position]:
-                jail[enemy].extend(board[new_position])
-                board[new_position].clear()
             if not Game.goes_offboard(player, new_position):
-                board[new_position].append(player)
+                if Game.enemy(player) in board[new_position]:
+                    jail[enemy].extend(board[new_position])
+                    board[new_position].clear()
+                if not Game.goes_offboard(player, new_position):
+                    board[new_position].append(player)
 
-        if len(dice) == 0:
-            self.next_player()
-        elif not Game.is_any_legal_move(self._board, self._jail, self._dice,
-                                        self._active_player):
-            self.next_player()
+            if len(dice) == 0:
+                self._next_player()
+            elif not Game.is_any_legal_move(self._board, self._jail, self._dice,
+                                            self._active_player):
+                self._next_player()
 
-    def next_player(self):
-        self._active_player = Game.enemy(self._active_player)
-        self._dice = self._roll_dice()
-        if not Game.is_any_legal_move(self._board, self._jail, self._dice,
-                                      self._active_player):
-            self.next_player()
+            log.debug("{}: move {} {}".format(color, position, distance))
+
+            if Game.get_winner(board, jail):
+                self._active_player = None
+
+            self.set_changed()
+            self.notify_observers()
+
+    def _next_player(self):
+        with self._game_mutex:
+            self._active_player = Game.enemy(self._active_player)
+            self._dice = self._roll_dice()
+            if not Game.is_any_legal_move(self._board, self._jail, self._dice,
+                                          self._active_player):
+                self._next_player()
 
     def get_player(self, color):
+        assert color in ('w', 'b')
         return Game.Player(self, color)
+
+    @property
+    def winner(self):
+        return Game.get_winner(self._board, self._jail)

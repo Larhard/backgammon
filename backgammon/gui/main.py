@@ -26,6 +26,8 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import logging
+
 import pygame
 
 import backgammon.gui.images as images
@@ -33,9 +35,10 @@ import backgammon.gui.images as images
 from backgammon.gui.config import BOARD_SIZE, WINDOW_TITLE, FIELD_COORD, \
      FIELD_SHIFT, CHECKER_SIZE, ROW_SIZE, JAIL_COORD, JAIL_SHIFT, JAIL_SIZE
 from backgammon.model.game import Game
-from utils import sum_by_index, multiply_by_value
+from utils.math import sum_by_index, multiply_by_value
 
-import logging
+from backgammon.bots.random.bot import Bot as Bot1
+from backgammon.bots.random.bot import Bot as Bot2
 
 log = logging.getLogger('gui')
 
@@ -58,14 +61,20 @@ def main(*args, **kwargs):
 
     game = Game()
     human_players = {
-        'w': game.get_player('w'),
-        'b': game.get_player('b'),
+        # 'w': game.get_player('w'),
+        # 'b': game.get_player('b'),
     }
+
+    bot1 = Bot1(game.get_player('w'))
+    bot2 = Bot2(game.get_player('b'))
 
     is_running = True
 
     active_dice = 0
     active_dice_text_pos = None
+
+    game.set_changed()
+    game.notify_observers()
 
     while is_running:
         for event in pygame.event.get():

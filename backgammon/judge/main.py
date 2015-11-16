@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Copyright (c) 2015, Bartlomiej Puget <larhard@gmail.com>
 # All rights reserved.
 #
@@ -28,27 +26,33 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-import argparse
 import logging
-import sys
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', '-m', help='gui/judge', default='gui')
-    parser.add_argument('--verbose', '-v', action='store_true')
-    args = parser.parse_args()
+from backgammon.model.game import Game
 
-    if args.mode == 'gui':
-        from backgammon.gui.main import main
-    elif args.mode == 'judge':
-        from backgammon.judge.main import main
-    else:
-        print("{} is not valid mode".format(args.mode))
-        parser.print_help()
-        sys.exit(1)
+from backgammon.bots.random.bot import Bot as Bot1
+from backgammon.bots.random.bot import Bot as Bot2
 
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger('Judge')
 
-    main(**vars(args))
+
+class Judge:
+    def __init__(self):
+        super().__init__()
+
+    def update(self, observable):
+        pass
+
+
+def main(*args, **kwargs):
+    game = Game()
+    judge = Judge()
+    game.add_observer(judge)
+    bot1 = Bot1(game.get_player('w'))
+    bot2 = Bot2(game.get_player('b'))
+    game.set_changed()
+    game.notify_observers()
+    while game.winner is None:
+        pass
+    log.debug("END")
+    log.debug("winner is {}".format(game.winner))
