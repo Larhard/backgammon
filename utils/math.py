@@ -33,3 +33,7 @@ def sum_by_index(p, q):
 
 def multiply_by_value(p, v):
     return [k * v for k in p]
+
+
+def signum(k):
+    return (k > 0) - (k < 0)

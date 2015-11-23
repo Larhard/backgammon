@@ -56,3 +56,6 @@ class Observable:
             self.clear_changed()
             for observer in self._observers:
                 observer.update(self)
+
+    def count_observers(self):
+        return len(self._observers)
