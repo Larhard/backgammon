@@ -124,3 +124,11 @@ class TestUtils(unittest.TestCase):
 
         self.assertEqual(utils.make_move(board_start, start, 1, player),
                 board_end)
+
+    def test_make_invalid_move_black(self):
+        player = 'b'
+        start = 1
+
+        board_start = config.INIT_BOARD.copy()
+
+        self.assertEqual(utils.make_move(board_start, start, 1, player), None)
