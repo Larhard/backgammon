@@ -31,6 +31,14 @@ import random
 import threading
 
 from backgammon.model.config import INIT_BOARD
+
+from backgammon.model.utils import make_move
+from backgammon.model.utils import get_winner
+from backgammon.model.utils import is_any_legal_move
+from backgammon.model.utils import roll_dice
+from backgammon.model.utils import player_modifier
+from backgammon.model.utils import enemy
+
 from utils.observable import Observable
 
 log = logging.getLogger('model')
@@ -49,12 +57,15 @@ class Game(Observable):
             self._color = color
             self._game.add_observer(self)
 
-        def __exit__(self):
+        def __enter__(self):
+            pass
+
+        def __exit__(self, exc_type, exc_value, exl_traceback):
             self._game.remove_observer(self)
 
         def move(self, position, distance):
             self._game.move(self._color, position,
-                            Game.distance_modifier(self._color) * distance)
+                    player_modifier(self._color) * distance)
 
         def update(self, observable):
             assert observable is self._game
@@ -68,26 +79,21 @@ class Game(Observable):
         def color(self):
             return self._color
 
-    def __init__(self):
+    def __init__(self, _dice_roller=None, _starting_player=None, _board=None):
         super().__init__()
 
         self._game_mutex = threading.RLock()
-        self._board = INIT_BOARD.copy()
-        self._active_player = random.sample(('w', 'b'), 1)[0]
-        self._dice = self._roll_dice()
-        self._jail = {'w': [], 'b': []}
+        self._board = _board or INIT_BOARD.copy()
+        self._active_player = _starting_player \
+            or random.sample(('w', 'b'), 1)[0]
 
-    @staticmethod
-    def _roll_dice():
-        return [random.randint(1, 6), random.randint(1, 6)]
+        self._roll_dice = _dice_roller or (lambda: (roll_dice(), roll_dice()))
+
+        self._dice = list(self._roll_dice())
 
     @property
     def board(self):
         return self._board.copy()
-
-    @property
-    def jail(self):
-        return self._jail.copy()
 
     @property
     def active_player(self):
@@ -97,135 +103,37 @@ class Game(Observable):
     def dice(self):
         return self._dice.copy()
 
-    @staticmethod
-    def distance_modifier(player):
-        return 1 if player == 'w' else -1
-
-    @staticmethod
-    def jail_field(player):
-        return -1 if player == 'w' else 24
-
-    @staticmethod
-    def non_home_fields(player):
-        return slice(0, 18) if player == 'w' else slice(6, 24)
-
-    @staticmethod
-    def goes_offboard(player, k):
-        return k >= 24 if player == 'w' else k < 0
-
-    @staticmethod
-    def enemy(player):
-        return 'b' if player == 'w' else 'w'
-
-    @staticmethod
-    def valid_distance(player):
-        return range(0, 7) if player == 'w' else range(-6, 1)
-
-    @staticmethod
-    def board_range():
-        return range(0, 24)
-
-    @staticmethod
-    def get_winner(board, jail):
-        for color in ('w', 'b'):
-            if sum(k.count(color) for k in board) + len(jail[color]) == 0:
-                return color
-        return None
-
-    @staticmethod
-    def verify_move(board, jail, position, distance, player):
-        new_position = position + distance
-
-        if position not in Game.board_range() \
-                and position != Game.jail_field(player):
-            return False
-
-        if distance not in Game.valid_distance(player):
-            return False
-
-        if position in Game.board_range() and player not in board[position]:
-            return False
-
-        if position == Game.jail_field(player) \
-                and player not in jail[player]:
-            return False
-
-        if len(jail[player]) > 0 and position != Game.jail_field(player):
-            return False
-
-        if Game.goes_offboard(player, new_position):
-            result = sum(field.count(player) for field
-                         in board[Game.non_home_fields(player)]) == 0
-            return result
-
-        if not Game.goes_offboard(player, new_position) \
-                and board[new_position].count(Game.enemy(player)) > 1:
-            return False
-
-        return True
-
-    @staticmethod
-    def is_any_legal_move(board, jail, dice, player):
-        modifier = Game.distance_modifier(player)
-
-        if player in jail[player]:
-            for distance in dice:
-                if Game.verify_move(board, jail, Game.jail_field(player),
-                                    modifier * distance, player):
-                    return True
-        else:
-            for position in Game.board_range():
-                for distance in dice:
-                    if Game.verify_move(board, jail, position,
-                                        modifier * distance, player):
-                        return True
-        return False
-
     def move(self, color, position, distance):
         with self._game_mutex:
-            new_position = position + distance
             player = self._active_player
-            enemy = Game.enemy(player)
             board = self._board
             dice = self._dice
-            jail = self._jail
 
-            if Game.get_winner(board, jail) is not None:
-                log.debug('{}: game has ended'.format(player))
+            if get_winner(board) is not None:
                 raise Game.LogicError('game has ended')
 
             if color != player:
-                log.debug('{}: not players turn'.format(player))
                 raise Game.LogicError('not players turn')
 
             if abs(distance) not in dice:
                 raise Game.LogicError('move is invalid')
 
-            if not self.verify_move(board, jail, position, distance, player):
+            new_board = make_move(board, position, distance, player)
+
+            if new_board is None:
                 raise Game.LogicError('move is invalid')
 
             dice.remove(abs(distance))
-            if position == Game.jail_field(player):
-                jail[player].pop()
-            else:
-                board[position].pop()
-
-            if not Game.goes_offboard(player, new_position):
-                if Game.enemy(player) in board[new_position]:
-                    jail[enemy].extend(board[new_position])
-                    board[new_position].clear()
-                if not Game.goes_offboard(player, new_position):
-                    board[new_position].append(player)
 
             if len(dice) == 0:
                 self._next_player()
-            elif not Game.is_any_legal_move(self._board, self._jail, self._dice,
-                                            self._active_player):
+            elif not is_any_legal_move(self._board, self._dice,
+                    self._active_player):
                 self._next_player()
 
             log.debug("{}: move {} {}".format(color, position, distance))
 
-            if Game.get_winner(board, jail):
+            if get_winner(board) is not None:
                 self._active_player = None
 
             self.set_changed()
@@ -233,10 +141,10 @@ class Game(Observable):
 
     def _next_player(self):
         with self._game_mutex:
-            self._active_player = Game.enemy(self._active_player)
-            self._dice = self._roll_dice()
-            if not Game.is_any_legal_move(self._board, self._jail, self._dice,
-                                          self._active_player):
+            self._active_player = enemy(self._active_player)
+            self._dice = list(self._roll_dice())
+            if not is_any_legal_move(self._board, self._dice,
+                    self._active_player):
                 self._next_player()
 
     def get_player(self, color):
@@ -245,4 +153,7 @@ class Game(Observable):
 
     @property
     def winner(self):
-        return Game.get_winner(self._board, self._jail)
+        return Game.get_winner(self._board)
+
+    def __str__(self):
+        return str(self.board)
