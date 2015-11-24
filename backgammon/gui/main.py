@@ -33,16 +33,17 @@ import pygame
 import backgammon.gui.images as images
 
 from backgammon.gui.config import BOARD_SIZE
-from backgammon.gui.config import WINDOW_TITLE
+from backgammon.gui.config import CHECKER_SIZE
 from backgammon.gui.config import FIELD_COORD
 from backgammon.gui.config import FIELD_SHIFT
-from backgammon.gui.config import CHECKER_SIZE
+from backgammon.gui.config import FIELD_SIZE
+from backgammon.gui.config import WINDOW_TITLE
 from backgammon.model.game import Game
 from backgammon.model.utils import player_from_number
 from utils.math import sum_by_index, multiply_by_value
 
-from backgammon.bots.random.bot import Bot as Bot1
-from backgammon.bots.random.bot import Bot as Bot2
+# from backgammon.bots.random.bot import Bot as Bot1
+# from backgammon.bots.random.bot import Bot as Bot2
 
 log = logging.getLogger('gui')
 
@@ -65,12 +66,12 @@ def main(*args, **kwargs):
 
     game = Game()
     human_players = {
-        # 'w': game.get_player('w'),
-        # 'b': game.get_player('b'),
+        'w': game.get_player('w'),
+        'b': game.get_player('b'),
     }
 
-    bot1 = Bot1(game.get_player('w'))
-    bot2 = Bot2(game.get_player('b'))
+    # bot1 = Bot1(game.get_player('w'))
+    # bot2 = Bot2(game.get_player('b'))
 
     is_running = True
 
@@ -86,6 +87,31 @@ def main(*args, **kwargs):
                 is_running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
+
+                # human move
+                if game.active_player in human_players:
+                    if active_dice_text_pos is not None \
+                            and active_dice_text_pos.collidepoint((x, y)):
+                        active_dice = (active_dice + 1) % len(game.dice)
+
+                    for i, (field_x, field_y) in enumerate(FIELD_COORD):
+                        field_size = FIELD_SIZE[i]
+                        left = field_x
+                        right = field_x + field_size[0]
+                        if FIELD_SHIFT[i][1] > 0:
+                            top = field_y
+                            bottom = top + field_size[1]
+                        else:
+                            bottom = field_y + CHECKER_SIZE[1]
+                            top = bottom - field_size[1]
+                        if left < x < right and top < y < bottom:
+                            try:
+                                human_players[game.active_player].move(i,
+                                    game.dice[active_dice])
+                            except Game.LogicError as e:
+                                print(e)
+                            active_dice = min(active_dice, len(game.dice)-1)
+                            break
 
         # print board
         screen.blit(board, (0, 0))
