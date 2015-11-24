@@ -140,7 +140,7 @@ def make_move(board, position, distance, player):
         if signum(board[new_position] == player_modifier(enemy(player))):
             board[jail_field(enemy(player))] += board[new_position]
             board[new_position] = 0
-        board[new_position] = checker
+        board[new_position] += checker
 
     return board
 
