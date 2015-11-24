@@ -132,3 +132,49 @@ class TestUtils(unittest.TestCase):
         board_start = config.INIT_BOARD.copy()
 
         self.assertEqual(utils.make_move(board_start, start, 1, player), None)
+
+    def test_make_door(self):
+        board = [0] * 26
+
+        p = copy.deepcopy(board)
+        p[10] = 1
+        p[14] = 1
+
+        q = copy.deepcopy(board)
+        q[14] = 2
+
+        self.assertEqual(utils.make_move(p, 10, 4, 'w'), q)
+
+    def test_enter_door(self):
+        board = [0] * 26
+
+        p = copy.deepcopy(board)
+        p[10] = 1
+        p[14] = 2
+
+        q = copy.deepcopy(board)
+        q[14] = 3
+
+        self.assertEqual(utils.make_move(p, 10, 4, 'w'), q)
+
+    def test_kill_enemy(self):
+        board = [0] * 26
+
+        p = copy.deepcopy(board)
+        p[10] = 1
+        p[14] = -1
+
+        q = copy.deepcopy(board)
+        q[14] = 1
+        q[25] = -1
+
+        self.assertEqual(utils.make_move(p, 10, 4, 'w'), q)
+
+    def test_move_into_enemy_door(self):
+        board = [0] * 26
+
+        p = copy.deepcopy(board)
+        p[10] = 1
+        p[14] = -2
+
+        self.assertEqual(utils.make_move(p, 10, 4, 'w'), None)
