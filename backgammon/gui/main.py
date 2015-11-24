@@ -42,13 +42,10 @@ from backgammon.model.game import Game
 from backgammon.model.utils import player_from_number
 from utils.math import sum_by_index, multiply_by_value
 
-# from backgammon.bots.random.bot import Bot as Bot1
-# from backgammon.bots.random.bot import Bot as Bot2
-
 log = logging.getLogger('gui')
 
 
-def main(*args, **kwargs):
+def main(white=None, black=None, *args, **kwargs):
     pygame.init()
 
     screen = pygame.display.set_mode(BOARD_SIZE)
@@ -65,13 +62,18 @@ def main(*args, **kwargs):
     }
 
     game = Game()
-    human_players = {
-        'w': game.get_player('w'),
-        'b': game.get_player('b'),
-    }
+    human_players = {}
+    bots = []
 
-    # bot1 = Bot1(game.get_player('w'))
-    # bot2 = Bot2(game.get_player('b'))
+    if white is None:
+        human_players['w'] = game.get_player('w')
+    else:
+        bots.append(white(game.get_player('w')))
+
+    if black is None:
+        human_players['b'] = game.get_player('b')
+    else:
+        bots.append(black(game.get_player('b')))
 
     is_running = True
 
@@ -109,7 +111,7 @@ def main(*args, **kwargs):
                                 human_players[game.active_player].move(i,
                                     game.dice[active_dice])
                             except Game.LogicError as e:
-                                print(e)
+                                log.info(e)
                             active_dice = min(active_dice, len(game.dice)-1)
                             break
 

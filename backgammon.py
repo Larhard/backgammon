@@ -30,6 +30,7 @@
 
 
 import argparse
+import importlib
 import logging
 import sys
 
@@ -37,6 +38,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', '-m', help='gui/judge', default='gui')
     parser.add_argument('--verbose', '-v', action='store_true')
+    parser.add_argument('--white', '-w')
+    parser.add_argument('--black', '-b')
     args = parser.parse_args()
 
     if args.mode == 'gui':
@@ -47,6 +50,12 @@ if __name__ == '__main__':
         print("{} is not valid mode".format(args.mode))
         parser.print_help()
         sys.exit(1)
+
+    if args.white:
+        args.white = importlib.import_module(args.white).Bot
+
+    if args.black:
+        args.black = importlib.import_module(args.black).Bot
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
