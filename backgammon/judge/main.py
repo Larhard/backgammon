@@ -27,32 +27,40 @@
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
+import threading
 
 from backgammon.model.game import Game
-
-from backgammon.bots.random.bot import Bot as Bot1
-from backgammon.bots.random.bot import Bot as Bot2
 
 log = logging.getLogger('Judge')
 
 
 class Judge:
-    def __init__(self):
+    def __init__(self, game_is_running_cv):
         super().__init__()
 
+        self._game_is_running_cv = game_is_running_cv
+
     def update(self, observable):
-        pass
+        if observable.winner is not None:
+            with self._game_is_running_cv:
+                self._game_is_running_cv.notify_all()
 
 
-def main(*args, **kwargs):
-    game = Game()
-    judge = Judge()
-    game.add_observer(judge)
-    bot1 = Bot1(game.get_player('w'))
-    bot2 = Bot2(game.get_player('b'))
-    game.set_changed()
-    game.notify_observers()
-    while game.winner is None:
-        pass
-    log.debug("END")
-    log.debug("winner is {}".format(game.winner))
+def main(white, black, *args, **kwargs):
+    game_is_running_cv = threading.Condition()
+
+    with game_is_running_cv:
+        game = Game()
+        judge = Judge(game_is_running_cv)
+        game.add_observer(judge)
+
+        bots = []
+        bots.append(white(game.get_player('w')))
+        bots.append(black(game.get_player('b')))
+
+        game.set_changed()
+        game.notify_observers()
+
+        game_is_running_cv.wait_for(lambda: game.winner is not None)
+
+        print(game.winner)

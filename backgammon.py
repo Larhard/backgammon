@@ -36,20 +36,16 @@ import sys
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', '-m', help='gui/judge', default='gui')
+    parser.add_argument('--no-gui', '-n', action='store_true')
     parser.add_argument('--verbose', '-v', action='store_true')
     parser.add_argument('--white', '-w')
     parser.add_argument('--black', '-b')
     args = parser.parse_args()
 
-    if args.mode == 'gui':
-        from backgammon.gui.main import main
-    elif args.mode == 'judge':
+    if args.no_gui:
         from backgammon.judge.main import main
     else:
-        print("{} is not valid mode".format(args.mode))
-        parser.print_help()
-        sys.exit(1)
+        from backgammon.gui.main import main
 
     if args.white:
         args.white = importlib.import_module(args.white).Bot

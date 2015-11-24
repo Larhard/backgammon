@@ -152,7 +152,7 @@ class Game(Observable):
 
     @property
     def winner(self):
-        return Game.get_winner(self._board)
+        return get_winner(self._board)
 
     def __str__(self):
         return str(self.board)
