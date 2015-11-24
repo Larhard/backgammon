@@ -146,8 +146,6 @@ def make_move(board, position, distance, player):
 
 
 def is_any_legal_move(board, dice, player):
-    modifier = player_modifier(player)
-
     if board[jail_field(player)]:
         for distance in dice:
             if verify_move(board, jail_field(player), distance, player):
