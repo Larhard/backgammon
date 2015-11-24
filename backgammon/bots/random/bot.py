@@ -46,13 +46,12 @@ class Bot:
         threading.Thread(target=self.move).start()
 
     def move(self):
-        if self._player.is_active():
-            while not self.try_to_move():
-                pass
+        while self._player.is_active() and not self.try_to_move():
+            pass
 
     def try_to_move(self):
         try:
-            position = random.randint(-1, 24)
+            position = random.randint(0, 25)
             distance = random.randint(1, 6)
             self._player.move(position, distance)
         except Game.LogicError:

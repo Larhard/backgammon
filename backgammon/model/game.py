@@ -64,8 +64,7 @@ class Game(Observable):
             self._game.remove_observer(self)
 
         def move(self, position, distance):
-            self._game.move(self._color, position,
-                    player_modifier(self._color) * distance)
+            self._game.move(self._color, position, distance)
 
         def update(self, observable):
             assert observable is self._game
@@ -110,6 +109,7 @@ class Game(Observable):
             dice = self._dice
 
             if get_winner(board) is not None:
+                self._active_player = None
                 raise Game.LogicError('game has ended')
 
             if color != player:
@@ -123,6 +123,7 @@ class Game(Observable):
             if new_board is None:
                 raise Game.LogicError('move is invalid')
 
+            self._board = new_board
             dice.remove(abs(distance))
 
             if len(dice) == 0:
@@ -133,19 +134,17 @@ class Game(Observable):
 
             log.debug("{}: move {} {}".format(color, position, distance))
 
-            if get_winner(board) is not None:
-                self._active_player = None
-
             self.set_changed()
             self.notify_observers()
 
     def _next_player(self):
-        with self._game_mutex:
-            self._active_player = enemy(self._active_player)
-            self._dice = list(self._roll_dice())
-            if not is_any_legal_move(self._board, self._dice,
-                    self._active_player):
-                self._next_player()
+        if get_winner(self._board) is None:
+            with self._game_mutex:
+                self._active_player = enemy(self._active_player)
+                self._dice = list(self._roll_dice())
+                if not is_any_legal_move(self._board, self._dice,
+                        self._active_player):
+                    self._next_player()
 
     def get_player(self, color):
         assert color in ('w', 'b')

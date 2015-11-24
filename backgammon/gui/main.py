@@ -32,9 +32,13 @@ import pygame
 
 import backgammon.gui.images as images
 
-from backgammon.gui.config import BOARD_SIZE, WINDOW_TITLE, FIELD_COORD, \
-     FIELD_SHIFT, CHECKER_SIZE, ROW_SIZE, JAIL_COORD, JAIL_SHIFT, JAIL_SIZE
+from backgammon.gui.config import BOARD_SIZE
+from backgammon.gui.config import WINDOW_TITLE
+from backgammon.gui.config import FIELD_COORD
+from backgammon.gui.config import FIELD_SHIFT
+from backgammon.gui.config import CHECKER_SIZE
 from backgammon.model.game import Game
+from backgammon.model.utils import player_from_number
 from utils.math import sum_by_index, multiply_by_value
 
 from backgammon.bots.random.bot import Bot as Bot1
@@ -83,61 +87,15 @@ def main(*args, **kwargs):
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
 
-                # human move
-                if game.active_player in human_players:
-                    if active_dice_text_pos is not None \
-                            and active_dice_text_pos.collidepoint((x, y)):
-                        active_dice = (active_dice + 1) % len(game.dice)
-
-                    for color in JAIL_COORD:
-                        left = JAIL_COORD[color][0]
-                        right = JAIL_COORD[color][0] + JAIL_SIZE[0]
-                        bottom = JAIL_COORD[color][1] + CHECKER_SIZE[1]
-                        top = JAIL_COORD[color][1] + CHECKER_SIZE[1] - \
-                            JAIL_SIZE[1]
-
-                        if left < x < right and top < y < bottom:
-                            try:
-                                human_players[game.active_player].move(
-                                    Game.jail_field(game.active_player),
-                                    game.dice[active_dice])
-                            except Game.LogicError as e:
-                                print(e)
-                            active_dice = min(active_dice, len(game.dice)-1)
-                            break
-
-                    for i, (field_x, field_y) in enumerate(FIELD_COORD):
-                        left = field_x
-                        right = field_x + ROW_SIZE[0]
-                        if FIELD_SHIFT[i][1] > 0:
-                            top = field_y
-                            bottom = top + ROW_SIZE[1]
-                        else:
-                            bottom = field_y + CHECKER_SIZE[1]
-                            top = bottom - ROW_SIZE[1]
-                        if left < x < right and top < y < bottom:
-                            try:
-                                human_players[game.active_player].move(i,
-                                    game.dice[active_dice])
-                            except Game.LogicError as e:
-                                print(e)
-                            active_dice = min(active_dice, len(game.dice)-1)
-                            break
-
         # print board
         screen.blit(board, (0, 0))
 
         # print checkers
         for i, row in enumerate(game.board):
-            for count, color in enumerate(row):
+            color = player_from_number(row)
+            for count in range(abs(row)):
                 screen.blit(checker[color], sum_by_index(FIELD_COORD[i],
                             multiply_by_value(FIELD_SHIFT[i], count)))
-
-        # print jails
-        for color in game.jail:
-            for count, _ in enumerate(game.jail[color]):
-                screen.blit(checker[color], sum_by_index(JAIL_COORD[color],
-                            multiply_by_value(JAIL_SHIFT[color], count)))
 
         # print dices
         font = pygame.font.Font(None, 36)
@@ -149,9 +107,9 @@ def main(*args, **kwargs):
 
         # print active dice
         font = pygame.font.Font(None, 36)
+        dice = game.dice
         active_dice_text = font.render('-> {} <-'.format(
-                                       game.dice[active_dice]), 1,
-                                       (255, 255, 255))
+                    dice[active_dice] if dice else ""), 1, (255, 255, 255))
         active_dice_text_pos = active_dice_text.get_rect()
         active_dice_text_pos.centerx = dice_text_pos.centerx
         active_dice_text_pos.midtop = dice_text_pos.midbottom

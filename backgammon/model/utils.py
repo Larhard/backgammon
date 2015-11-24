@@ -35,8 +35,21 @@ def roll_dice():
     return random.randint(1, 6)
 
 
+def players():
+    return ['w', 'b']
+
+
 def player_modifier(player):
     return 1 if player == 'w' else -1
+
+
+def player_from_number(count):
+    modifier = signum(count)
+
+    if modifier == 0:
+        return None
+
+    return 'w' if modifier == 1 else 'b'
 
 
 def jail_field(player):
@@ -61,6 +74,10 @@ def valid_distance(player):
 
 def board_range():
     return range(1, 25)
+
+
+def board_slice():
+    return slice(1, 25)
 
 
 def get_winner(board):
@@ -99,9 +116,9 @@ def verify_move(board, position, distance, player):
         return False
 
     if goes_offboard(player, new_position):
-        result = sum(field.count(player) for field
-                     in board[non_home_fields(player)]) == 0
-        return result
+        for field in board[non_home_fields(player)]:
+            if player_from_number(field) == player:
+                return False
 
     if not goes_offboard(player, new_position) \
             and board[new_position] * player_modifier(enemy(player)) > 1:
@@ -133,12 +150,11 @@ def is_any_legal_move(board, dice, player):
 
     if board[jail_field(player)]:
         for distance in dice:
-            if verify_move(board, jail_field(player), modifier * distance,
-                    player):
+            if verify_move(board, jail_field(player), distance, player):
                 return True
     else:
         for position in board_range():
             for distance in dice:
-                if verify_move(board, position, modifier * distance, player):
+                if verify_move(board, position, distance, player):
                     return True
     return False
