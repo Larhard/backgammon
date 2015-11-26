@@ -36,7 +36,6 @@ from backgammon.model.utils import make_move
 from backgammon.model.utils import get_winner
 from backgammon.model.utils import is_any_legal_move
 from backgammon.model.utils import roll_dice
-from backgammon.model.utils import player_modifier
 from backgammon.model.utils import enemy
 
 from utils.observable import Observable
@@ -77,6 +76,14 @@ class Game(Observable):
         @property
         def color(self):
             return self._color
+
+        @property
+        def dice(self):
+            return self._game.dice
+
+        @property
+        def board(self):
+            return self._game.board
 
     def __init__(self, _dice_roller=None, _starting_player=None, _board=None):
         super().__init__()

@@ -26,7 +26,10 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import itertools as it
 import random
+
+from copy import copy
 
 from utils.math import signum
 
@@ -156,3 +159,35 @@ def is_any_legal_move(board, dice, player):
                 if verify_move(board, position, distance, player):
                     return True
     return False
+
+
+def player_fields(board, player):
+    for i, field in enumerate(board):
+        if player_from_number(player) == player:
+            yield i
+
+
+def available_moves(board, dices, player, history=[]):
+    yielded = False
+
+    if not dices:
+        yielded = True
+        yield copy(history), copy(board)
+
+    for dice in dices:
+        new_dices = list(dices)
+        new_dices.remove(dice)
+        new_history = list(history)
+
+        for position in range(0, 26):
+            new_history.append((position, dice))
+            new_board = make_move(board, position, dice, player)
+            if new_board is not None:
+                for h, b in available_moves(new_board, new_dices, player,
+                        new_history):
+                    yielded = True
+                    yield h, b
+            new_history.pop()
+
+    if not yielded:
+        yield copy(history), copy(board)

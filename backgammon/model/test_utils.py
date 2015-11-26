@@ -178,3 +178,32 @@ class TestUtils(unittest.TestCase):
         p[14] = -2
 
         self.assertEqual(utils.make_move(p, 10, 4, 'w'), None)
+
+    def test_available_moves(self):
+        board = [0] * 26
+
+        board[5] = 2
+        board[6] = 1
+        board[7] = -1
+        board[8] = -2
+
+        moves = {tuple(k[0]) for k in utils.available_moves(board, (1, 2), 'w')}
+        self.assertEqual(moves, {
+            ((5, 2), (5, 1), ),
+            ((5, 1), (5, 2), ),
+            ((5, 2), (6, 1), ),
+            ((6, 1), (5, 2), ),
+            ((6, 1), (7, 2), ),
+        })
+
+    def test_available_moves_with_unusable_dice(self):
+        board = [0] * 26
+
+        board[5] = 1
+        board[7] = -2
+        board[8] = -2
+
+        moves = {tuple(k[0]) for k in utils.available_moves(board, (1, 2), 'w')}
+        self.assertEqual(moves, {
+            ((5, 1), ),
+        })
