@@ -84,8 +84,8 @@ def board_slice():
 
 
 def get_winner(board):
-    white_checkers = sum(k for k in board if k < 0)
-    black_checkers = sum(k for k in board if k > 0)
+    white_checkers = sum(k for k in board if k > 0)
+    black_checkers = sum(k for k in board if k < 0)
 
     if white_checkers == 0:
         return 'w'
