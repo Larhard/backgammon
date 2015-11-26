@@ -31,14 +31,16 @@ import threading
 from backgammon.bots.utils.minmax import MinMax
 
 from backgammon.model.utils import available_moves
-from backgammon.model.utils import jail_field
 from backgammon.model.utils import enemy
+from backgammon.model.utils import jail_field
+from backgammon.model.utils import player_from_number
+from backgammon.model.utils import player_modifier
 
 
 class Bot:
     def __init__(self, player):
         self._player = player
-        self.min_max = MinMax(evaluate=self.evaluate, levels=2)
+        self.min_max = MinMax(evaluate=self.evaluate, levels=1)
 
         self._player.add_observer(self)
 
@@ -68,6 +70,22 @@ class Bot:
 
     def evaluate(self, board):
         player = self._player.color
+        modifier = player_modifier(player)
 
-        return board[jail_field(enemy(player))] * 0.55 \
-                - board[jail_field(player)] * 0.55
+        player_checkers = 0
+        enemy_checkers = 0
+        push_forward = 0
+
+        for i, k in enumerate(board):
+            if player_from_number(k) == player:
+                push_forward += ((26 + modifier * i) % 26) * k / 28
+                player_checkers += k
+            elif player_from_number(k) == enemy(player):
+                enemy_checkers += k
+                push_forward -= ((26 + modifier * i) % 26) * k / 28
+
+        push_forward -= player_checkers + enemy_checkers
+
+        return board[jail_field(enemy(player))] \
+                - board[jail_field(player)] \
+                + push_forward
