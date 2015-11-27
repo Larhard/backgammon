@@ -31,8 +31,6 @@ import itertools as it
 from backgammon.model.utils import player_from_number
 from backgammon.model.utils import available_moves
 
-import sys
-
 
 class MinMax:
     def __init__(self, evaluate, levels):
@@ -42,18 +40,19 @@ class MinMax:
     def maximize(self, board, level=0, previous_value=None):
         modifier = 1 if level % 2 == 0 else -1
         if level == self.levels:
-            return modifier * self.evaluate(board)
+            return self.evaluate(board)
 
         result = 0
         for dices in it.combinations_with_replacement(range(1, 7), 2):
             multiplier = 1/36 if dices[0] == dices[1] else 1/18
-            max_value = -2**30
+            max_value = modifier * -2**31
 
             for _, possible_board in available_moves(board, dices,
                     player_from_number(modifier)):
-                max_value = max(max_value,
-                        modifier * self.maximize(possible_board, level+1,
-                            max_value))
+                possible_board_value = self.maximize(possible_board, level+1,
+                        max_value)
+                if modifier * max_value < modifier * possible_board_value:
+                    max_value = possible_board_value
 
                 if previous_value is not None \
                         and modifier * max_value <= modifier * previous_value:
