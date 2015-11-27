@@ -26,9 +26,9 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from backgammon.model.utils import player_modifier
-
 import backgammon.bots.min_max as min_max
+
+import backgammon.bots.utils.tactics as tactics
 
 
 class Bot(min_max.Bot):
@@ -37,18 +37,5 @@ class Bot(min_max.Bot):
 
     def evaluate(self, board):
         player = self._player.color
-        modifier = player_modifier(player)
-        result = 0
 
-        player_singles = 0
-        enemy_singles = 0
-
-        for k in board[1:25]:
-            if k == modifier:
-                player_singles += 1
-            elif k == -modifier:
-                enemy_singles += 1
-
-        result -= player_singles - enemy_singles
-
-        return result
+        return tactics.tactic_doors(board, player)

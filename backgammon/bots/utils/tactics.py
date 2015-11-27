@@ -26,16 +26,57 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import backgammon.bots.min_max as min_max
+from backgammon.model.utils import player_modifier
+from backgammon.model.utils import jail_field
+from backgammon.model.utils import enemy
+from backgammon.model.utils import player_from_number
 
-import backgammon.bots.utils.tactics as tactics
+
+def tactic_killer(board, player):
+    result = 0
+
+    result += board[jail_field(enemy(player))] \
+        - board[jail_field(player)]
+
+    return result / 15
 
 
-class Bot(min_max.Bot):
-    def __init__(self, player):
-        super().__init__(player)
+def tactic_push_forward(board, player):
+    modifier = player_modifier(player)
+    result = 0
 
-    def evaluate(self, board):
-        player = self._player.color
+    player_checkers = 0
+    enemy_checkers = 0
+    push_forward = 0
 
-        return tactics.tactic_push_forward(board, player)
+    for i, k in enumerate(board):
+        if player_from_number(k) == player:
+            push_forward += ((26 + modifier * i) % 26) * k / 28
+            player_checkers += k
+        elif player_from_number(k) == enemy(player):
+            enemy_checkers += k
+            push_forward -= ((26 + modifier * i) % 26) * k / 28
+
+    push_forward -= player_checkers + enemy_checkers
+
+    result += push_forward
+
+    return result / 15
+
+
+def tactic_doors(board, player):
+    modifier = player_modifier(player)
+    result = 0
+
+    player_singles = 0
+    enemy_singles = 0
+
+    for k in board[1:25]:
+        if k == modifier:
+            player_singles += 1
+        elif k == -modifier:
+            enemy_singles += 1
+
+    result -= player_singles - enemy_singles
+
+    return result / 15

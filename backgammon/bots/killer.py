@@ -26,10 +26,10 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from backgammon.model.utils import enemy
-from backgammon.model.utils import jail_field
-
 import backgammon.bots.min_max as min_max
+
+import backgammon.bots.utils.tactics as tactics
+
 
 class Bot(min_max.Bot):
     def __init__(self, player):
@@ -37,8 +37,5 @@ class Bot(min_max.Bot):
 
     def evaluate(self, board):
         player = self._player.color
-        result = 0
 
-        result += board[jail_field(enemy(player))] \
-                - board[jail_field(player)]
-        return result
+        return tactics.tactic_killer(board, player)

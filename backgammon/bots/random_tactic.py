@@ -26,6 +26,8 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import random
+
 import backgammon.bots.min_max as min_max
 
 import backgammon.bots.utils.tactics as tactics
@@ -35,7 +37,20 @@ class Bot(min_max.Bot):
     def __init__(self, player):
         super().__init__(player)
 
+        available_tactics = [k for k in vars(tactics)
+                if k.startswith('tactic_')]
+        selected_tactics = random.sample(available_tactics,
+                random.randint(1, len(available_tactics)))
+
+        self.tactics = [vars(tactics)[k] for k in selected_tactics]
+
+        print(player.color, sorted(selected_tactics))
+
     def evaluate(self, board):
         player = self._player.color
+        result = 0
 
-        return tactics.tactic_push_forward(board, player)
+        for tactic in self.tactics:
+            result += tactic(board, player)
+
+        return result

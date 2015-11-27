@@ -38,4 +38,6 @@ class Bot(min_max.Bot):
     def evaluate(self, board):
         player = self._player.color
 
-        return tactics.tactic_push_forward(board, player)
+        return tactics.tactic_killer(board, player) \
+            + tactics.tactic_push_forward(board, player) \
+            + tactics.tactic_doors(board, player)
