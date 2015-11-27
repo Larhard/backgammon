@@ -26,19 +26,43 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from backgammon.model.utils import enemy
-from backgammon.model.utils import jail_field
+import threading
 
-import backgammon.bots.min_max as min_max
+from backgammon.bots.utils.minmax import MinMax
 
-class Bot(min_max.Bot):
+from backgammon.model.utils import available_moves
+
+
+class Bot:
     def __init__(self, player):
-        super().__init__(player)
+        self._player = player
+        self.min_max = MinMax(evaluate=self.evaluate, levels=1)
+
+        self._player.add_observer(self)
+
+    def update(self, observable):
+        assert observable is self._player
+        threading.Thread(target=self.move).start()
+
+    def move(self):
+        if not self._player.is_active():
+            return
+
+        board = self._player.board
+        dice = self._player.dice
+        color = self._player.color
+
+        mx = None
+        selected_move = None
+
+        for h, b in available_moves(board, dice, color):
+            value = self.min_max.maximize(b)
+            if mx is None or value > mx:
+                mx = value
+                selected_move = h
+
+        for position, distance in selected_move:
+            self._player.move(position, distance)
 
     def evaluate(self, board):
-        player = self._player.color
-        result = 0
-
-        result += board[jail_field(enemy(player))] \
-                - board[jail_field(player)]
-        return result
+        pass
