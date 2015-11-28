@@ -26,6 +26,8 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import random
+
 from backgammon.model.utils import player_modifier
 from backgammon.model.utils import jail_field
 from backgammon.model.utils import enemy
@@ -80,3 +82,7 @@ def tactic_doors(board, player):
     result -= player_singles - enemy_singles
 
     return result / 15
+
+
+def tactic_random(board, player):
+    return random.random() * 2 - 1

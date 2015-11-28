@@ -32,8 +32,8 @@ import backgammon.bots.utils.tactics as tactics
 
 
 class Bot(min_max.Bot):
-    def __init__(self, player):
-        super().__init__(player)
+    def __init__(self, player, *args, **kwargs):
+        super().__init__(player, *args, **kwargs)
 
     def evaluate(self, board):
         player = self._player.color

@@ -34,15 +34,22 @@ from backgammon.model.utils import available_moves
 
 
 class Bot:
-    def __init__(self, player):
+    def __init__(self, player, threaded=True):
         self._player = player
         self.min_max = MinMax(evaluate=self.evaluate, levels=1)
+        self._threaded = threaded
 
         self._player.add_observer(self)
 
     def update(self, observable):
         assert observable is self._player
-        threading.Thread(target=self.move).start()
+        if not self._player.is_active():
+            return
+
+        if self._threaded:
+            threading.Thread(target=self.move).start()
+        else:
+            self.move()
 
     def move(self):
         if not self._player.is_active():
