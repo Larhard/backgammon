@@ -59,11 +59,11 @@ class TestUtils(unittest.TestCase):
 
         b = copy.deepcopy(board)
         b[3] = 1
-        self.assertEqual(utils.get_winner(b), 'w')
+        self.assertEqual(utils.get_winner(b), 'b')
 
         b = copy.deepcopy(board)
         b[3] = -1
-        self.assertEqual(utils.get_winner(b), 'b')
+        self.assertEqual(utils.get_winner(b), 'w')
 
         b = copy.deepcopy(board)
         b[4] = 1
